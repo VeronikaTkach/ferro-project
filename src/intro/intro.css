@@ -1,0 +1,115 @@
+/* ─── Overlay backdrop ─────────────────────────────────────────────────────── */
+.intro-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.25);
+  opacity: 1;
+  transition: opacity 0.25s ease;
+}
+
+.intro-overlay--out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ─── Glassmorphism card ───────────────────────────────────────────────────── */
+.intro-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 48px 52px;
+  max-width: 420px;
+  width: calc(100% - 48px);
+
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(14px) saturate(150%);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 24px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.18),
+    0 1px 0 rgba(255, 255, 255, 0.25) inset;
+}
+
+/* ─── Content ──────────────────────────────────────────────────────────────── */
+.intro-title {
+  margin: 0;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: rgba(0, 0, 0, 0.82);
+  text-align: center;
+}
+
+.intro-list {
+  margin: 0;
+  padding: 0 0 0 1.25em;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: rgba(0, 0, 0, 0.65);
+  align-self: stretch;
+}
+
+.intro-list li {
+  padding-left: 4px;
+}
+
+/* ─── Button ───────────────────────────────────────────────────────────────── */
+.intro-btn {
+  margin-top: 4px;
+  padding: 12px 44px;
+  border-radius: 9999px;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  background: rgba(0, 0, 0, 0.07);
+  color: rgba(0, 0, 0, 0.8);
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+
+.intro-btn:hover {
+  background: rgba(0, 0, 0, 0.13);
+  border-color: rgba(0, 0, 0, 0.22);
+}
+
+.intro-btn:active {
+  transform: scale(0.97);
+}
+
+.intro-btn:focus-visible {
+  outline: 2px solid rgba(0, 0, 0, 0.4);
+  outline-offset: 3px;
+}
+
+/* ─── Tip ──────────────────────────────────────────────────────────────────── */
+.intro-tip {
+  margin: 0;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 0.78rem;
+  color: rgba(0, 0, 0, 0.38);
+  letter-spacing: 0.01em;
+}
+
+/* ─── Reduced motion ───────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .intro-overlay {
+    transition: none;
+  }
+
+  .intro-btn {
+    transition: none;
+  }
+}
