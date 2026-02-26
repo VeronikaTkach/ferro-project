@@ -13,3 +13,5 @@ export const COLLISION_BOUNCE     = 0.98;
 export const COLLISION_SEPARATION = 0.6;
 
 export const MAX_BUBBLES = 30;
+
+export const RENDER_STYLE: 'classic' | 'glass-film' = 'glass-film';
