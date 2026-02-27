@@ -8,10 +8,14 @@ import {
   MIN_R,
   MAX_R,
   MAX_BUBBLES,
+  LIFETIME,
+  GROW_FACTOR,
+  GROW_INTERVAL,
 } from './config';
 import { rand, bounceOffWalls, resolveBubbleCollisions } from './physics';
 import { randomIridescentStops, drawBubble } from './renderer';
 import { hitBubble, isHoveringBubble, pop } from './input';
+
 
 export function startBubblesApp(root: HTMLElement): () => void {
   root.innerHTML = '';
@@ -55,6 +59,7 @@ export function startBubblesApp(root: HTMLElement): () => void {
       x,
       y,
       r,
+      baseR: r,
       vx: Math.cos(angle) * speed,
       vy: Math.sin(angle) * speed,
       drift: rand(0.6, 1.2),
@@ -143,6 +148,24 @@ export function startBubblesApp(root: HTMLElement): () => void {
     }
 
     resolveBubbleCollisions(bubbles, w, h);
+
+    for (const b of bubbles) {
+      // ----- Lifetime logic -----
+      const age = now - b.born;
+
+      // Auto-pop after 30 seconds
+      if (b.popAt === null && age >= LIFETIME) {
+        pop(b, now);
+      }
+
+      // Growth every 5 seconds (only if not popped)
+      if (b.popAt === null) {
+        const steps = Math.floor(age / GROW_INTERVAL);
+        b.r = b.baseR * Math.pow(GROW_FACTOR, steps);
+      }
+
+      drawBubble(ctx, b, now);
+    }
 
     for (const b of bubbles) {
       drawBubble(ctx, b, now);

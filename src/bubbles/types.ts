@@ -5,6 +5,7 @@ export type TBubble = {
   x: number;
   y: number;
   r: number;
+  baseR: number;
   vx: number;
   vy: number;
   drift: number;
