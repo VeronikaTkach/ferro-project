@@ -11,7 +11,7 @@ import {
 } from './config';
 import { rand, bounceOffWalls, resolveBubbleCollisions } from './physics';
 import { randomIridescentStops, drawBubble } from './renderer';
-import { hitBubble, pop } from './input';
+import { hitBubble, isHoveringBubble, pop } from './input';
 
 export function startBubblesApp(root: HTMLElement): () => void {
   root.innerHTML = '';
@@ -69,9 +69,46 @@ export function startBubblesApp(root: HTMLElement): () => void {
     }
   }
 
+  function toCanvasPoint(e: PointerEvent): { x: number; y: number } {
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    };
+  }
+
+  function setHoverCursor(hovering: boolean) {
+    canvas.classList.toggle('is-hovering-bubble', hovering);
+  }
+
+  function setPressCursor(pressing: boolean) {
+    canvas.classList.toggle('is-pressing', pressing);
+  }
+
+  canvas.addEventListener('pointermove', (e) => {
+    const p = toCanvasPoint(e);
+    setHoverCursor(isHoveringBubble(bubbles, p.x, p.y));
+  });
+
   canvas.addEventListener('pointerdown', (e) => {
-    const b = hitBubble(bubbles, e.clientX, e.clientY);
+    setPressCursor(true);
+
+    const p = toCanvasPoint(e);
+    const b = hitBubble(bubbles, p.x, p.y);
     if (b) pop(b, performance.now());
+  });
+
+  canvas.addEventListener('pointerup', () => {
+    setPressCursor(false);
+  });
+
+  canvas.addEventListener('pointercancel', () => {
+    setPressCursor(false);
+  });
+
+  canvas.addEventListener('pointerleave', () => {
+    setHoverCursor(false);
+    setPressCursor(false);
   });
 
   let last = performance.now();

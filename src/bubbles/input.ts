@@ -13,6 +13,14 @@ export function hitBubble(
   return null;
 }
 
+export function isHoveringBubble(
+  bubbles: TBubble[],
+  clientX: number,
+  clientY: number,
+): boolean {
+  return hitBubble(bubbles, clientX, clientY) !== null;
+}
+
 export function pop(b: TBubble, now: number): void {
   if (b.popAt !== null) return;
   b.popAt = now;
