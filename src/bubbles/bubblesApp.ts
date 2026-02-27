@@ -27,113 +27,8 @@ import { hitBubble, isHoveringBubble, pop } from './input';
 
 const DRAG_START_PX = 8;           // how far pointer must move to start dragging
 const PUSH_RADIUS = 140;           // influence radius for "wind" push
-const PUSH_STRENGTH = 120;         // base push strength (px/s^2-ish feel)
+const PUSH_STRENGTH = 120;         // base push strength
 const PUSH_VEL_INFLUENCE = 0.65;   // how much pointer velocity affects push
-
-/* Combo / rainbow dust */
-const COMBO_WINDOW_MS = 5000;      // 3 pops within 5s
-const DUST_LIFE_MS = 3000;         // dust lives 3 seconds
-const DUST_PARTICLES = 90;
-
-/* ─────────────────────────────────────────────────────────────────────────────
-   Rainbow dust (simple particle system)
-───────────────────────────────────────────────────────────────────────────── */
-
-type TDustParticle = {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  born: number;
-  life: number;
-  r: number;
-  c: string;
-};
-
-const DUST_COLORS = [
-  'rgba(255, 80, 80, 0.95)',
-  'rgba(255, 210, 80, 0.95)',
-  'rgba(120, 255, 140, 0.95)',
-  'rgba(80, 210, 255, 0.95)',
-  'rgba(190, 120, 255, 0.95)',
-  'rgba(255, 120, 220, 0.95)',
-];
-
-function spawnRainbowDust(out: TDustParticle[], x: number, y: number, now: number, baseR: number) {
-  const n = DUST_PARTICLES;
-  const speedMin = 90 + baseR * 0.35;
-  const speedMax = 260 + baseR * 0.8;
-
-  for (let i = 0; i < n; i++) {
-    const a = rand(0, Math.PI * 2);
-    const sp = rand(speedMin, speedMax);
-    const rr = rand(0.7, 2.2) + baseR * 0.01;
-
-    out.push({
-      x,
-      y,
-      vx: Math.cos(a) * sp,
-      vy: Math.sin(a) * sp,
-      born: now,
-      life: DUST_LIFE_MS,
-      r: rr,
-      c: DUST_COLORS[(Math.random() * DUST_COLORS.length) | 0],
-    });
-  }
-}
-
-function drawRainbowDust(ctx: CanvasRenderingContext2D, dust: TDustParticle[], now: number, dt: number) {
-  if (!dust.length) return;
-
-  // Update
-  for (const p of dust) {
-    const age = now - p.born;
-    const t = clamp(age / p.life, 0, 1);
-
-    // gentle drag + slight downward gravity; fades out
-    p.vx *= 1 - dt * 0.9;
-    p.vy *= 1 - dt * 0.9;
-    p.vy += 120 * dt;
-
-    p.x += p.vx * dt;
-    p.y += p.vy * dt;
-
-    // grow a tiny bit then shrink
-    const swell = 1 + Math.sin(Math.PI * clamp(t, 0, 1)) * 0.35;
-    p.r = Math.max(0.3, p.r * 0.995 * swell);
-  }
-
-  // Render (screen for “радужность”)
-  ctx.save();
-  ctx.globalCompositeOperation = 'screen';
-
-  for (const p of dust) {
-    const age = now - p.born;
-    const t = clamp(age / p.life, 0, 1);
-    const a = (1 - t) * 0.85;
-
-    // soft glow dot
-    const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 4.2);
-    g.addColorStop(0.0, p.c.replace(/[\d.]+\)\s*$/, `${a})`)); // quick alpha replace
-    g.addColorStop(1.0, 'rgba(255,255,255,0)');
-
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.r * 3.0, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  ctx.restore();
-
-  // Cleanup
-  for (let i = dust.length - 1; i >= 0; i--) {
-    if (now - dust[i].born >= dust[i].life) dust.splice(i, 1);
-  }
-}
-
-/* ─────────────────────────────────────────────────────────────────────────────
-   App
-───────────────────────────────────────────────────────────────────────────── */
 
 export function startBubblesApp(root: HTMLElement): () => void {
   root.innerHTML = '';
@@ -164,23 +59,6 @@ export function startBubblesApp(root: HTMLElement): () => void {
   let bubbles: TBubble[] = [];
   let idSeq = 1;
   let nextSpawnAt = performance.now();
-
-  // Dust particles
-  const dust: TDustParticle[] = [];
-
-  // Combo tracking
-  let popTimes: number[] = [];
-
-  function registerPopAndMaybeTriggerCombo(b: TBubble, now: number) {
-    popTimes.push(now);
-    popTimes = popTimes.filter((t) => now - t <= COMBO_WINDOW_MS);
-
-    if (popTimes.length >= 3) {
-      // Trigger on the 3rd pop (or more), then reset to avoid constant retriggering
-      spawnRainbowDust(dust, b.x, b.y, now, b.r);
-      popTimes = [];
-    }
-  }
 
   function spawn(now: number) {
     const r = rand(MIN_R, MAX_R);
@@ -225,7 +103,6 @@ export function startBubblesApp(root: HTMLElement): () => void {
   // Pointer state for push + drag
   const pointer = {
     active: false,
-    id: -1,
     x: 0,
     y: 0,
     lastX: 0,
@@ -238,7 +115,6 @@ export function startBubblesApp(root: HTMLElement): () => void {
   // Drag candidate / dragging
   let down = {
     active: false,
-    t: 0,
     x: 0,
     y: 0,
     bubble: null as TBubble | null,
@@ -309,7 +185,6 @@ export function startBubblesApp(root: HTMLElement): () => void {
     const p = toCanvasPoint(e);
 
     pointer.active = true;
-    pointer.id = e.pointerId;
     pointer.x = p.x;
     pointer.y = p.y;
     pointer.lastX = p.x;
@@ -319,14 +194,14 @@ export function startBubblesApp(root: HTMLElement): () => void {
     pointer.lastT = performance.now();
 
     down.active = true;
-    down.t = performance.now();
     down.x = p.x;
     down.y = p.y;
     down.bubble = hitBubble(bubbles, p.x, p.y);
     down.offX = 0;
     down.offY = 0;
 
-    // (важно) не лопаем на pointerdown — лопаем на pointerup, если это был “тап”, а не drag
+    // Important: we don't pop on pointerdown.
+    // We pop on pointerup if no drag happened.
   });
 
   function endPointer(e?: PointerEvent) {
@@ -334,7 +209,6 @@ export function startBubblesApp(root: HTMLElement): () => void {
 
     // If we were dragging: release (no pop)
     if (draggingBubble) {
-      // "Throw" already encoded in bubble.vx/vy from pointer velocity
       draggingBubble = null;
       down.active = false;
       down.bubble = null;
@@ -349,11 +223,7 @@ export function startBubblesApp(root: HTMLElement): () => void {
     if (down.active && down.bubble) {
       const b = down.bubble;
       const now = performance.now();
-
-      if (b.popAt === null) {
-        pop(b, now);
-        registerPopAndMaybeTriggerCombo(b, now);
-      }
+      if (b.popAt === null) pop(b, now);
     }
 
     down.active = false;
@@ -369,7 +239,6 @@ export function startBubblesApp(root: HTMLElement): () => void {
 
   canvas.addEventListener('pointerleave', () => {
     setHoverCursor(false);
-    // pointer might still be down (captured), but for UX it’s ok to reset hover
   });
 
   let last = performance.now();
@@ -434,7 +303,6 @@ export function startBubblesApp(root: HTMLElement): () => void {
           const falloff = 1 - d / PUSH_RADIUS; // 0..1
           const pointerSpeed = Math.hypot(pointer.vx, pointer.vy);
 
-          // base push + extra from fast pointer move
           const push = (PUSH_STRENGTH * falloff) * (1 + (pointerSpeed / 800) * PUSH_VEL_INFLUENCE);
 
           b.vx += nx * push * dt;
@@ -470,7 +338,6 @@ export function startBubblesApp(root: HTMLElement): () => void {
       // Auto-pop after lifetime
       if (b.popAt === null && age >= LIFETIME) {
         pop(b, now);
-        registerPopAndMaybeTriggerCombo(b, now);
       }
 
       // Growth steps (only if not popped)
@@ -481,9 +348,6 @@ export function startBubblesApp(root: HTMLElement): () => void {
 
       drawBubble(ctx, b, now);
     }
-
-    // Dust render on top
-    drawRainbowDust(ctx, dust, now, dt);
 
     // Remove finished popped bubbles
     bubbles = bubbles.filter((b) => {
