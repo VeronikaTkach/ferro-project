@@ -60,9 +60,15 @@ function drawFilmTexture(
   y: number,
   r: number,
 ): void {
-  const film = getFilmCanvas(b);
+  const film = getFilmCanvas(b, r);
   ctx.globalAlpha = 1;
-  ctx.drawImage(film, x - r - FILM_PAD, y - r - FILM_PAD, r * 2 + FILM_PAD * 2, r * 2 + FILM_PAD * 2);
+  ctx.drawImage(
+    film,
+    x - r - FILM_PAD,
+    y - r - FILM_PAD,
+    r * 2 + FILM_PAD * 2,
+    r * 2 + FILM_PAD * 2
+  );
 }
 
 function drawFilmArc(

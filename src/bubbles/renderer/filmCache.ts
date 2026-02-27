@@ -1,15 +1,41 @@
 import type { TBubble } from '../types';
 import { FILM_PAD } from './tunables';
 
-// Cached soap-film texture per bubble (pre-render once, scale each frame)
-const filmCache = new WeakMap<TBubble, HTMLCanvasElement>();
+// Насколько часто пересоздавать текстуру плёнки по радиусу.
+// 6–10 обычно хорошо. 8 — золотая середина.
+const FILM_R_QUANT = 8;
 
-export function getFilmCanvas(b: TBubble): HTMLCanvasElement {
+type TFilmEntry = {
+  keyR: number;                 // “квантизированный” радиус, по которому создана текстура
+  canvas: HTMLCanvasElement;
+};
+
+// Cached soap-film texture per bubble (regenerate when radius crosses a quantization threshold)
+const filmCache = new WeakMap<TBubble, TFilmEntry>();
+
+function quantizeR(r: number): number {
+  const rr = Math.max(10, Math.round(r));
+  return Math.max(10, Math.round(rr / FILM_R_QUANT) * FILM_R_QUANT);
+}
+
+// Детерминированный RNG (Mulberry32)
+function mulberry32(seed: number): () => number {
+  let t = seed >>> 0;
+  return () => {
+    t += 0x6D2B79F5;
+    let x = Math.imul(t ^ (t >>> 15), 1 | t);
+    x ^= x + Math.imul(x ^ (x >>> 7), 61 | x);
+    return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+export function getFilmCanvas(b: TBubble, rNow: number): HTMLCanvasElement {
+  const keyR = quantizeR(rNow);
+
   const cached = filmCache.get(b);
-  if (cached) return cached;
+  if (cached && cached.keyR === keyR) return cached.canvas;
 
-  const baseR = Math.max(10, Math.round(b.r));
-  const size = baseR * 2 + (FILM_PAD * 2);
+  const size = keyR * 2 + (FILM_PAD * 2);
 
   const c = document.createElement('canvas');
   c.width = size;
@@ -17,21 +43,24 @@ export function getFilmCanvas(b: TBubble): HTMLCanvasElement {
 
   const ctx = c.getContext('2d');
   if (!ctx) {
-    filmCache.set(b, c);
+    filmCache.set(b, { keyR, canvas: c });
     return c;
   }
 
   const cx = size / 2;
   const cy = size / 2;
-  const r = baseR;
+  const r = keyR;
 
   ctx.clearRect(0, 0, size, size);
 
-  // Build film texture once, clipped to a circle
+  // Clip circle
   ctx.save();
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI * 2);
   ctx.clip();
+
+  // Детерминированный random, чтобы плёнка не “прыгала” при регенерации
+  const rng = mulberry32((b.id * 2654435761 + keyR * 1013904223) >>> 0);
 
   // 1) Offset radial pastel wash
   {
@@ -48,11 +77,11 @@ export function getFilmCanvas(b: TBubble): HTMLCanvasElement {
     ctx.globalCompositeOperation = 'source-over';
   }
 
-  // 2) Soft linear sweep, randomly rotated
+  // 2) Soft linear sweep, deterministically rotated
   {
     ctx.save();
     ctx.translate(cx, cy);
-    ctx.rotate(Math.random() * Math.PI * 2);
+    ctx.rotate(rng() * Math.PI * 2);
     ctx.translate(-cx, -cy);
 
     const g = ctx.createLinearGradient(cx - r, cy, cx + r, cy);
@@ -93,6 +122,6 @@ export function getFilmCanvas(b: TBubble): HTMLCanvasElement {
 
   ctx.restore();
 
-  filmCache.set(b, c);
+  filmCache.set(b, { keyR, canvas: c });
   return c;
 }
